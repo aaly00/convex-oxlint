@@ -8,7 +8,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { binPath, runNode } from "../../scripts/exec.mjs";
+import { binPath, fileUrl, runNode } from "../../scripts/exec.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const FILES = Number(process.env.BENCH_FILES ?? 500);
@@ -61,8 +61,8 @@ function buildCorpus() {
   // ESLint flat config using the official plugin.
   fs.writeFileSync(
     path.join(dir, "eslint.config.mjs"),
-    `import tsParser from ${JSON.stringify(path.join(ROOT, "node_modules/@typescript-eslint/parser/dist/index.js"))};
-import convex from ${JSON.stringify(path.join(ROOT, "node_modules/@convex-dev/eslint-plugin/dist/esm/index.js"))};
+    `import tsParser from ${JSON.stringify(fileUrl(path.join(ROOT, "node_modules/@typescript-eslint/parser/dist/index.js")))};
+import convex from ${JSON.stringify(fileUrl(path.join(ROOT, "node_modules/@convex-dev/eslint-plugin/dist/esm/index.js")))};
 export default [
   { linterOptions: { reportUnusedDisableDirectives: "off" } },
   {
@@ -86,7 +86,7 @@ export default [
     JSON.stringify({
       categories: {},
       plugins: [],
-      jsPlugins: [path.join(ROOT, "dist/esm/index.js")],
+      jsPlugins: [fileUrl(path.join(ROOT, "dist/esm/index.js"))],
       rules: {
         "@convex-dev/no-old-registered-function-syntax": "error",
         "@convex-dev/require-args-validator": "error",

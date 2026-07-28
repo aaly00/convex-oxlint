@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { binPath, runNode } from "../../scripts/exec.mjs";
+import { binPath, fileUrl, runNode } from "../../scripts/exec.mjs";
 import * as tsParser from "@typescript-eslint/parser";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -29,7 +29,7 @@ fs.writeFileSync(
     {
       categories: {},
       plugins: [],
-      jsPlugins: [path.join(here, "dump-plugin.js")],
+      jsPlugins: [fileUrl(path.join(here, "dump-plugin.js"))],
       rules: { "astdump/dump": "off" },
       overrides: [
         { files: ["**/*.ts", "**/*.tsx"], rules: { "astdump/dump": "warn" } },

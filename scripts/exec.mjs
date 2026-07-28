@@ -7,7 +7,7 @@
 // rather than relying on shims, shebangs or PATH.
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const REPO_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -80,4 +80,15 @@ export function parseNpmJson(stdout) {
   const start = stdout.search(/[[{]/);
   if (start === -1) throw new Error(`no JSON in npm output:\n${stdout}`);
   return JSON.parse(stdout.slice(start));
+}
+
+/**
+ * A `file://` URL for `p`.
+ *
+ * Absolute paths are ambiguous as ESM specifiers on Windows — `D:\…` parses as
+ * a URL with protocol `d:` — so anything handed to `import()`, or to a tool
+ * that forwards it there (oxlint's `jsPlugins`), must be a URL.
+ */
+export function fileUrl(p) {
+  return pathToFileURL(p).href;
 }

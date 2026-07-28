@@ -3,11 +3,11 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { ESLint } from "eslint";
 import tsParser from "@typescript-eslint/parser";
 import convexEslintPlugin from "@convex-dev/eslint-plugin";
-import { binPath, runNode } from "../../scripts/exec.mjs";
+import { binPath, fileUrl, runNode } from "../../scripts/exec.mjs";
 
 export const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -106,7 +106,11 @@ export function makeOffsetMapper(text) {
 export async function loadPlugin(plugin) {
   return plugin === "official"
     ? convexEslintPlugin
-    : (await import(path.join(ROOT, "dist/esm/index.js"))).default;
+    : // `import()` takes a URL, not a path: on Windows an absolute path like
+      // `D:\…` is read as a URL with protocol `d:` and throws
+      // ERR_UNSUPPORTED_ESM_URL_SCHEME.
+      (await import(pathToFileURL(path.join(ROOT, "dist/esm/index.js")).href))
+        .default;
 }
 
 /**
@@ -221,7 +225,7 @@ export function runOxlint({ rules, files, cwd = ROOT, extraConfig = {} }) {
       // Turn every built-in Rust rule off so only plugin diagnostics remain.
       categories: {},
       plugins: [],
-      jsPlugins: [path.join(ROOT, "dist/esm/index.js")],
+      jsPlugins: [fileUrl(path.join(ROOT, "dist/esm/index.js"))],
       rules,
       ...extraConfig,
     }),
@@ -404,7 +408,7 @@ export function oxlintFixOutputs({ rules, files }) {
     JSON.stringify({
       categories: {},
       plugins: [],
-      jsPlugins: [path.join(ROOT, "dist/esm/index.js")],
+      jsPlugins: [fileUrl(path.join(ROOT, "dist/esm/index.js"))],
       rules,
     }),
   );
