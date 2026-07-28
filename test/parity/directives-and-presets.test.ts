@@ -46,27 +46,23 @@ describe("eslint-disable directive parity", () => {
       normalizeOxlint(runOxlint({ rules, files: [file] })),
     );
 
-    // Same source with every disable comment stripped.
-    const stripped = fs
-      .readFileSync(file, "utf8")
-      .split("\n")
-      .map((line) =>
-        line.replace(/\/\/ eslint-disable.*$/, "").replace(/\/\*\s*eslint-(disable|enable).*?\*\//g, ""),
-      )
-      .join("\n");
-    const tmp = path.join(
-      ROOT,
-      "test/fixtures/handwritten/convex/.directives_stripped.tmp.ts",
+    // Re-lint the same bytes with oxlint's directive handling switched off.
+    // Doing it this way rather than stripping the comments textually keeps the
+    // test independent of line endings — a CRLF checkout on Windows broke the
+    // regex-based version.
+    const withoutDirectives = comparable(
+      normalizeOxlint(
+        runOxlint({
+          rules,
+          files: [file],
+          extraConfig: {
+            options: { respectEslintDisableDirectives: false },
+          },
+        }),
+      ),
     );
-    fs.writeFileSync(tmp, stripped);
-    try {
-      const withoutDirectives = comparable(
-        normalizeOxlint(runOxlint({ rules, files: [tmp] })),
-      );
-      expect(withoutDirectives.length).toBeGreaterThan(withDirectives.length);
-    } finally {
-      fs.rmSync(tmp, { force: true });
-    }
+
+    expect(withoutDirectives.length).toBeGreaterThan(withDirectives.length);
   }, 240_000);
 });
 

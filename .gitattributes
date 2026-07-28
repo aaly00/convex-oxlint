@@ -1,0 +1,6 @@
+# Lint fixtures are compared byte-for-byte and diagnostics carry line/column
+# positions, so the corpus must be identical on every platform. Without this a
+# Windows checkout converts LF to CRLF and shifts offsets.
+* text=auto eol=lf
+*.png binary
+*.tgz binary
