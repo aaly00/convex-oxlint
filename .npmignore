@@ -1,0 +1,3 @@
+# `files` in package.json is the source of truth for what ships; this only
+# guards against stray artifacts inside the directories it lists.
+src/**/*.test.ts

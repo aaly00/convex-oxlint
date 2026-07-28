@@ -1,0 +1,99 @@
+{
+  "name": "convex-oxlint",
+  "version": "1.0.0",
+  "description": "Oxlint port of @convex-dev/eslint-plugin \u2014 a drop-in replacement that keeps the same rule ids, messages, spans and fixes.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "keywords": [
+    "oxlint",
+    "oxlint-plugin",
+    "convex",
+    "eslint",
+    "eslintplugin",
+    "linter"
+  ],
+  "homepage": "https://github.com/aaly00/convex-oxlint#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aaly00/convex-oxlint.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aaly00/convex-oxlint/issues"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs && node scripts/copy-presets.mjs",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "prepare": "npm run build",
+    "typecheck": "node node_modules/typescript7/bin/tsc --noEmit -p tsconfig.json",
+    "fixtures": "node test/fixtures/generate.mjs",
+    "test": "npm run build && npm run fixtures && node scripts/version-check.mjs && vitest run",
+    "test:parity": "npm run build && npm run fixtures && vitest run test/parity",
+    "bench": "npm run build && node test/bench/bench.mjs",
+    "version:check": "node scripts/version-check.mjs",
+    "prepublishOnly": "npm run version:check && npm run build"
+  },
+  "dependencies": {
+    "@oxlint/plugins": "^1.76.0"
+  },
+  "peerDependencies": {
+    "oxlint": ">=1.76.0"
+  },
+  "peerDependenciesMeta": {
+    "oxlint": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@convex-dev/eslint-plugin": "2.0.0",
+    "@types/node": "^22.20.1",
+    "@typescript-eslint/parser": "~8.58.0",
+    "@typescript-eslint/utils": "~8.58.0",
+    "convex": "^1.42.3",
+    "eslint": "^9.39.0",
+    "oxlint": "^1.76.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.58.0",
+    "typescript7": "npm:typescript@^7.0.2",
+    "vitest": "^4.1.0"
+  },
+  "files": [
+    "README.md",
+    "CHANGELOG.md",
+    "dist",
+    "src",
+    "oxlintrc.recommended.json",
+    "oxlintrc.recommended-oxlint-only.json",
+    "PARITY.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/index.d.ts",
+        "default": "./dist/commonjs/index.js"
+      }
+    },
+    "./configs": {
+      "import": {
+        "types": "./dist/esm/configs.d.ts",
+        "default": "./dist/esm/configs.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/configs.d.ts",
+        "default": "./dist/commonjs/configs.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/commonjs/index.js",
+  "types": "./dist/commonjs/index.d.ts",
+  "module": "./dist/esm/index.js"
+}

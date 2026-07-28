@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.build/
+.scratch/
+.astdump/
+.astdump-diffs.json
+.fuzz-corpus/
+.fuzz-corpus-deep/
+test/fixtures/generated/
+*.tgz

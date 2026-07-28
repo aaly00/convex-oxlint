@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    # Tag pushes need to be a trigger in their own right: `refs/tags/v*` does
+    # not match `branches: [main]`, so without this the publish job below could
+    # never fire.
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: ["20.19", "22.12", "24"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npx oxlint
+      # The full differential suite: the real @convex-dev/eslint-plugin under
+      # the real ESLint API vs this port under the real oxlint binary.
+      - run: npm test
+
+  ast-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.12"
+          cache: npm
+      - run: npm ci
+      - run: node tools/astdiff/compare.mjs
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [test, ast-parity]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required to mint npm provenance attestations.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.12"
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - run: npm ci
+      # Refuse to publish when the tag and package.json disagree.
+      - name: Check tag matches package version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $PKG" >&2
+            exit 1
+          fi
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
