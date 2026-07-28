@@ -163,7 +163,7 @@ describe("installed package", () => {
   it("ships only the intended files", () => {
     // Taken from `npm pack --json`, which reports package-relative paths, so
     // this needs no `tar` binary and behaves the same on every platform.
-    const listing = tarballFiles;
+    const listing = tarballFiles.map((f) => f.replace(/\\/g, "/"));
 
     expect(listing).toContain("package.json");
     expect(listing).toContain("README.md");

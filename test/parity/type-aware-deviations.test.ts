@@ -125,9 +125,12 @@ describe("type-aware deviations, measured on a fully typed Convex project", () =
 
   it("records the exact no-filter-in-query cases only type information can catch", async () => {
     const rules = { "@convex-dev/no-filter-in-query": "error" };
+    // `d.file` comes from path.relative, so it uses the platform separator.
     const only = (list: any[]) =>
       list
-        .filter((d) => d.file.endsWith("convex/filters.ts"))
+        .filter((d) =>
+          d.file.replace(/\\/g, "/").endsWith("convex/filters.ts"),
+        )
         .map((d) => `${d.line}:${d.column}`)
         .sort();
 
