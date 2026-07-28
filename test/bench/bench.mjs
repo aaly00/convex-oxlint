@@ -7,8 +7,8 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { binPath, runNode } from "../../scripts/exec.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const FILES = Number(process.env.BENCH_FILES ?? 500);
@@ -105,35 +105,22 @@ function time(fn) {
 }
 
 function runEslint(dir) {
-  try {
-    return execFileSync(
-      path.join(ROOT, "node_modules/.bin/eslint"),
-      ["--no-warn-ignored", "-f", "json", "convex"],
-      { cwd: dir, encoding: "utf8", maxBuffer: 512 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] },
-    );
-  } catch (err) {
-    if (err.stdout == null) throw err;
-    return err.stdout;
-  }
+  return runNode(
+    binPath("eslint", ROOT),
+    ["--no-warn-ignored", "-f", "json", "convex"],
+    { cwd: dir },
+  );
 }
 
 function runOxlint(dir) {
-  try {
-    return execFileSync(
-      path.join(ROOT, "node_modules/.bin/oxlint"),
-      ["--format", "json", "--no-ignore", "-A", "all", "convex"],
-      {
-        cwd: dir,
-        encoding: "utf8",
-        maxBuffer: 512 * 1024 * 1024,
-        stdio: ["ignore", "pipe", "pipe"],
-        env: { ...process.env, CONVEX_OXLINT_SILENCE_TYPE_AWARE_NOTICE: "1" },
-      },
-    );
-  } catch (err) {
-    if (err.stdout == null) throw err;
-    return err.stdout;
-  }
+  return runNode(
+    binPath("oxlint", ROOT),
+    ["--format", "json", "--no-ignore", "-A", "all", "convex"],
+    {
+      cwd: dir,
+      env: { ...process.env, CONVEX_OXLINT_SILENCE_TYPE_AWARE_NOTICE: "1" },
+    },
+  );
 }
 
 const dir = buildCorpus();

@@ -8,11 +8,19 @@ import { beforeAll, describe, expect, it } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { ROOT } from "./harness.mjs";
+import {
+  binPath,
+  parseNpmJson,
+  runNode,
+  runNodeStrict,
+  runNpm,
+} from "../../scripts/exec.mjs";
 
 let projectDir: string;
 let tarball: string;
+let tarballFiles: string[];
 
 const CONVEX_SRC = `declare function query(...a: unknown[]): unknown;
 declare const ctx: any;
@@ -28,16 +36,7 @@ export const outside = query(async (c) => 1);
 `;
 
 function runOxlint(args: string[], cwd: string) {
-  try {
-    return execFileSync(path.join(cwd, "node_modules/.bin/oxlint"), args, {
-      cwd,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-  } catch (err: any) {
-    if (err.stdout == null) throw err;
-    return err.stdout;
-  }
+  return runNode(binPath("oxlint", cwd), args, { cwd });
 }
 
 function diagnostics(stdout: string) {
@@ -51,18 +50,16 @@ function diagnostics(stdout: string) {
 
 beforeAll(() => {
   // Build and pack exactly what `npm publish` would upload.
-  execFileSync("npm", ["run", "build"], { cwd: ROOT, stdio: "pipe" });
+  runNpm(["run", "build"], { cwd: ROOT, stdio: "pipe" });
   // `--ignore-scripts` keeps the `prepare` build's output off stdout so the
   // `--json` payload can be parsed; the build already ran above.
-  const packOut = execFileSync(
-    "npm",
+  const packOut = runNpm(
     ["pack", "--json", "--ignore-scripts", "--pack-destination", os.tmpdir()],
-    { cwd: ROOT, encoding: "utf8" },
+    { cwd: ROOT },
   );
-  tarball = path.join(
-    os.tmpdir(),
-    JSON.parse(packOut.slice(packOut.indexOf("[")))[0].filename,
-  );
+  const packed = parseNpmJson(packOut)[0];
+  tarball = path.join(os.tmpdir(), packed.filename);
+  tarballFiles = packed.files.map((f: { path: string }) => f.path);
 
   projectDir = fs.mkdtempSync(path.join(os.tmpdir(), "oxpkg-"));
   fs.mkdirSync(path.join(projectDir, "convex"), { recursive: true });
@@ -73,11 +70,10 @@ beforeAll(() => {
     path.join(projectDir, "package.json"),
     JSON.stringify({ name: "consumer", private: true, version: "0.0.0" }),
   );
-  execFileSync(
-    "npm",
-    ["install", "--no-audit", "--no-fund", tarball, `oxlint@1.76.0`],
-    { cwd: projectDir, stdio: "pipe" },
-  );
+  runNpm(["install", "--no-audit", "--no-fund", tarball, "oxlint@1.76.0"], {
+    cwd: projectDir,
+    stdio: "pipe",
+  });
 }, 600_000);
 
 describe("installed package", () => {
@@ -142,10 +138,7 @@ describe("installed package", () => {
     `;
     fs.writeFileSync(path.join(projectDir, "probe.mjs"), script);
     const out = JSON.parse(
-      execFileSync("node", ["probe.mjs"], {
-        cwd: projectDir,
-        encoding: "utf8",
-      }),
+      runNodeStrict("probe.mjs", [], { cwd: projectDir }),
     );
     expect(out.pluginName).toBe("@convex-dev");
     expect(out.jsPlugins).toEqual(["convex-oxlint"]);
@@ -162,21 +155,15 @@ describe("installed package", () => {
        console.log(JSON.stringify({ name: p.meta.name, rules: Object.keys(p.rules).length }));`,
     );
     const out = JSON.parse(
-      execFileSync("node", ["probe.cjs"], {
-        cwd: projectDir,
-        encoding: "utf8",
-      }),
+      runNodeStrict("probe.cjs", [], { cwd: projectDir }),
     );
     expect(out).toEqual({ name: "@convex-dev", rules: 6 });
   }, 300_000);
 
   it("ships only the intended files", () => {
-    const listing = execFileSync("tar", ["-tzf", tarball], {
-      encoding: "utf8",
-    })
-      .split("\n")
-      .filter(Boolean)
-      .map((f) => f.replace(/^package\//, ""));
+    // Taken from `npm pack --json`, which reports package-relative paths, so
+    // this needs no `tar` binary and behaves the same on every platform.
+    const listing = tarballFiles;
 
     expect(listing).toContain("package.json");
     expect(listing).toContain("README.md");
@@ -201,22 +188,21 @@ describe("installed package", () => {
    * non-zero whenever it reports an error, which is not a failure here.
    */
   function stderrOf(env: NodeJS.ProcessEnv = {}) {
-    const bin = path.join(
-      projectDir,
-      "node_modules/.bin/oxlint" + (process.platform === "win32" ? ".cmd" : ""),
-    );
-    const result = spawnSync(bin, ["--format", "json", "-A", "all", "convex"], {
-      cwd: projectDir,
-      encoding: "utf8",
-      shell: process.platform === "win32",
-      // Explicitly cleared so the suite-wide silence flag does not hide the
-      // notice this test is asserting on.
-      env: {
-        ...process.env,
-        CONVEX_OXLINT_SILENCE_TYPE_AWARE_NOTICE: "",
-        ...env,
+    const result = spawnSync(
+      process.execPath,
+      [binPath("oxlint", projectDir), "--format", "json", "-A", "all", "convex"],
+      {
+        cwd: projectDir,
+        encoding: "utf8",
+        // Explicitly cleared so the suite-wide silence flag does not hide the
+        // notice this test is asserting on.
+        env: {
+          ...process.env,
+          CONVEX_OXLINT_SILENCE_TYPE_AWARE_NOTICE: "",
+          ...env,
+        },
       },
-    });
+    );
     if (result.error) throw result.error;
     return result.stderr ?? "";
   }

@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { execFileSync } from "node:child_process";
+import { binPath, runNode } from "../../scripts/exec.mjs";
 import * as tsParser from "@typescript-eslint/parser";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -39,8 +39,8 @@ fs.writeFileSync(
     2,
   ),
 );
-execFileSync(
-  path.join(root, "node_modules/.bin/oxlint"),
+runNode(
+  binPath("oxlint", root),
   ["--config", configPath, "--silent", "-A", "all", "--no-ignore"],
   {
     cwd: fixturesDir,

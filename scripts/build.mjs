@@ -11,11 +11,10 @@
 // staged copy of `src/` carrying the right marker.
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { binPath, runNodeStrict } from "./exec.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const TSC = path.join(root, "node_modules/typescript7/bin/tsc");
 const stageRoot = path.join(root, ".build");
 
 const DIALECTS = [
@@ -70,7 +69,7 @@ for (const dialect of DIALECTS) {
   );
 
   process.stdout.write(`building ${dialect.name}… `);
-  execFileSync(TSC, ["-p", path.join(stage, "tsconfig.json")], {
+  runNodeStrict(binPath("tsc"), ["-p", path.join(stage, "tsconfig.json")], {
     cwd: root,
     stdio: "inherit",
   });

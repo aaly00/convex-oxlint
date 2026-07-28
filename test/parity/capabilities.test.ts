@@ -7,10 +7,10 @@ import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 import { ROOT } from "./harness.mjs";
+import { binPath, runNode } from "../../scripts/exec.mjs";
 
-const OXLINT_BIN = path.join(ROOT, "node_modules/.bin/oxlint");
+const OXLINT_BIN = binPath("oxlint", ROOT);
 
 const PROBE_PLUGIN = `
 const rule = {
@@ -71,14 +71,11 @@ function runProbe(extraArgs: string[] = [], typeAware = false) {
   );
   let stdout = "";
   try {
-    stdout = execFileSync(
+    stdout = runNode(
       OXLINT_BIN,
       ["--format", "json", "--no-ignore", "-A", "all", ...extraArgs, "convex"],
-      { cwd: dir, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      { cwd: dir },
     );
-  } catch (err: any) {
-    if (err.stdout == null) throw err;
-    stdout = err.stdout;
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

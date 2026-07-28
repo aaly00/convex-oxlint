@@ -3,17 +3,17 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { ESLint } from "eslint";
 import tsParser from "@typescript-eslint/parser";
 import convexEslintPlugin from "@convex-dev/eslint-plugin";
+import { binPath, runNode } from "../../scripts/exec.mjs";
 
 export const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../..",
 );
-const OXLINT_BIN = path.join(ROOT, "node_modules/.bin/oxlint");
+const OXLINT_BIN = binPath("oxlint", ROOT);
 
 export const ALL_RULES = [
   "no-old-registered-function-syntax",
@@ -238,23 +238,11 @@ export function runOxlint({ rules, files, cwd = ROOT, extraConfig = {} }) {
     ...files.map((f) => path.relative(cwd, f)),
   ];
 
-  let stdout;
-  try {
-    stdout = execFileSync(OXLINT_BIN, args, {
-      cwd,
-      encoding: "utf8",
-      maxBuffer: 256 * 1024 * 1024,
-      env: {
-        ...process.env,
-        CONVEX_OXLINT_SILENCE_TYPE_AWARE_NOTICE: "1",
-      },
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-  } catch (err) {
-    // oxlint exits non-zero when it reports errors; that is expected.
-    if (err.stdout == null) throw err;
-    stdout = err.stdout;
-  }
+  // oxlint exits non-zero when it reports errors; `runNode` returns stdout anyway.
+  const stdout = runNode(OXLINT_BIN, args, {
+    cwd,
+    env: { ...process.env, CONVEX_OXLINT_SILENCE_TYPE_AWARE_NOTICE: "1" },
+  });
 
   const parsed = JSON.parse(stdout);
   const out = [];
@@ -431,17 +419,10 @@ export function oxlintFixOutputs({ rules, files }) {
     "all",
     ...staged.map((f) => path.relative(dir, f)),
   ];
-  try {
-    execFileSync(OXLINT_BIN, args, {
-      cwd: dir,
-      encoding: "utf8",
-      maxBuffer: 256 * 1024 * 1024,
-      env: { ...process.env, CONVEX_OXLINT_SILENCE_TYPE_AWARE_NOTICE: "1" },
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-  } catch (err) {
-    if (err.stdout == null) throw err;
-  }
+  runNode(OXLINT_BIN, args, {
+    cwd: dir,
+    env: { ...process.env, CONVEX_OXLINT_SILENCE_TYPE_AWARE_NOTICE: "1" },
+  });
   return readTree(dir);
 }
 
